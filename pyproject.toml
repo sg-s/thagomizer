@@ -39,3 +39,44 @@ test = "pytest"
 dev = {features = ["dev"], solve-group = "default"}
 test = {features = ["test"], solve-group = "default"}
 
+
+
+
+[tool.ruff]
+include = [
+    "**/src/**/*.py",
+    "**/tests/**/*.py",
+]
+
+
+
+[tool.ruff.lint]
+ignore = ["E203", "E266", "E501"]
+
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+
+[tool.distutils.bdist_wheel]
+universal = true
+
+[tool.coverage.run]
+omit = [
+    "tests/*.py",
+]
+
+
+[tool.interrogate]
+fail-under = 100
+exclude = ["setup.py", "docs", "build","tests","variables","conftest.py"]
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = true
+ignore-semiprivate = true
+ignore-private = true
+ignore-property-decorators = true
+ignore-nested-functions = true
+ignore-nested-classes = true
+ignore-setters = false
+ignore-regex = ["^get$", "^mock_.*", ".*BaseClass.*"]
+color = true
