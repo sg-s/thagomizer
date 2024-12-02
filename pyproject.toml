@@ -30,9 +30,11 @@ ipykernel = ">=6.29.5,<7"
 
 [tool.pixi.feature.test.dependencies]
 pytest = ">=8.3.4,<9"
+coverage = ">=7.6.8,<8"
 
 [tool.pixi.feature.test.tasks]
-test = "pytest"
+test = "coverage run -m pytest"
+coverage = { cmd = "coverage html", depends-on = ["test"] }
 
 
 [tool.pixi.environments]

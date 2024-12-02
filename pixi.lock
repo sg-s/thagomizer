@@ -194,6 +194,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-h4bc722e_7.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ca-certificates-2024.8.30-hbcca054_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/colorama-0.4.6-pyhd8ed1ab_0.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.6.8-py313h8060acc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/exceptiongroup-1.2.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/iniconfig-2.0.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ld_impl_linux-64-2.43-h712a8e2_2.conda
@@ -225,6 +226,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-h99b78c6_7.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ca-certificates-2024.8.30-hf0a4a13_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/colorama-0.4.6-pyhd8ed1ab_0.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.6.8-py313ha9b7d5b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/exceptiongroup-1.2.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/iniconfig-2.0.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libexpat-2.6.4-h286801f_0.conda
@@ -422,6 +424,46 @@ packages:
   - pkg:pypi/comm?source=hash-mapping
   size: 12134
   timestamp: 1710320435158
+- kind: conda
+  name: coverage
+  version: 7.6.8
+  build: py313h8060acc_0
+  subdir: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.6.8-py313h8060acc_0.conda
+  sha256: 4c6cfa6816d21dc2e799fcb7d4f2d3b7dadeb0eba948cacec84fd33b9a769b54
+  md5: cf7681f6c2dc94ff8577430e4c280dc6
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
+  - python >=3.13,<3.14.0a0
+  - python_abi 3.13.* *_cp313
+  - tomli
+  license: Apache-2.0
+  license_family: APACHE
+  purls:
+  - pkg:pypi/coverage?source=hash-mapping
+  size: 371219
+  timestamp: 1732426302564
+- kind: conda
+  name: coverage
+  version: 7.6.8
+  build: py313ha9b7d5b_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.6.8-py313ha9b7d5b_0.conda
+  sha256: 1747141f16821adced20f12966831ff444f06942dbecb36d443db43fa8b0dfe0
+  md5: 2a72ba6a651f184a6515acfa48687d11
+  depends:
+  - __osx >=11.0
+  - python >=3.13,<3.14.0a0
+  - python >=3.13,<3.14.0a0 *_cp313
+  - python_abi 3.13.* *_cp313
+  - tomli
+  license: Apache-2.0
+  license_family: APACHE
+  purls:
+  - pkg:pypi/coverage?source=hash-mapping
+  size: 370706
+  timestamp: 1732426401447
 - kind: conda
   name: debugpy
   version: 1.8.9
@@ -1675,7 +1717,7 @@ packages:
   name: thagomizer
   version: 0.1.0
   path: .
-  sha256: 74634a1d8a51cf2753067fbd698e508107807bcb81268bd18257efc73f5cd218
+  sha256: c6ad170898f6addeddd56bc6c042ad74702bdfdfdcb5458ff9cd34ff4c5b5616
   requires_dist:
   - xxhash>=3.5.0,<4
   requires_python: '>=3.11'
