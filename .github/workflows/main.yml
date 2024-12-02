@@ -50,9 +50,13 @@ jobs:
 
     needs: [code-formatting-syntax-and-docstrings]
     steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - uses: prefix-dev/setup-pixi@v0.8.0
         with:
-          manifest-path: ../pyproject.toml
+          manifest-path: pyproject.toml
           pixi-version: v0.39.0
       - run: pixi run test
 
