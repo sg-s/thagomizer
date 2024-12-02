@@ -1,3 +1,5 @@
+"""module to test functions in utils"""
+
 from pathlib import Path
 
 from thagomizer.utils import hash_file
