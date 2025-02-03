@@ -3,5 +3,4 @@
 *.pyc
 
 # pixi environments
-.pixi
-*.egg-info
+*py.typed
