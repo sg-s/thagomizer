@@ -1,6 +1,6 @@
 *.DS_Store
 *__pycache__*
 *.pyc
-
-# pixi environments
 *py.typed
+*.ipynb
+*.ipynb_checkpoints
