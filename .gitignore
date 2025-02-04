@@ -4,3 +4,11 @@
 *py.typed
 *.ipynb
 *.ipynb_checkpoints
+
+
+# video files
+*.avi
+*.vtt
+*.mkv
+*.webm
+*.webvtt
