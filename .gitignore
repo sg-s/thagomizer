@@ -6,6 +6,9 @@
 *.ipynb_checkpoints
 
 
+# docs
+*site/*
+
 # video files
 *.avi
 *.vtt
