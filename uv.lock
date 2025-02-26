@@ -907,7 +907,7 @@ wheels = [
 
 [[package]]
 name = "thagomizer"
-version = "0.3.0"
+version = "0.3.2"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },

@@ -83,6 +83,7 @@ def extract_english_subtitles(
     Raises:
         RuntimeError: If ffmpeg fails to extract subtitles.
     """
+
     # Check for English subtitles using ffprobe
     subtitle_stream = get_english_subtitle_stream(input_file)
     if subtitle_stream is None:
@@ -334,9 +335,12 @@ def transcode_for_streaming(
     """
     input_path = Path(input_file)
     if output_file is None:
-        output_file = str(input_path.with_suffix(".webm"))
+        output_file = input_path.with_suffix(".webm")
 
-    temp_file = str(input_path.with_suffix(".tmp.webm"))
+    if output_file.exists():
+        return output_file
+
+    temp_file = input_path.with_suffix(".tmp.webm")
 
     audio_channels = get_audio_channels(input_file)
     audio_filter = "channelmap=channel_layout=5.1" if audio_channels >= 6 else "anull"
