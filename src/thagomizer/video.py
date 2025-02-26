@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from beartype import beartype
+
 from thagomizer.utils import hash_file
 
 FFMPEG_LOC = shutil.which("ffmpeg")
@@ -71,7 +72,7 @@ def get_english_subtitle_stream(input_file: str):
 def extract_english_subtitles(
     input_file: str,
     output_file: Optional[str] = None,
-) -> None:
+) -> str | None:
     """Extracts English subtitles from a video and saves them in WebVTT format.
 
     Args:
@@ -128,6 +129,7 @@ def extract_english_subtitles(
         raise RuntimeError(f"Subtitle file {output_file} is empty.")
 
     print(f"English subtitles saved to: {output_file}")
+    return output_file
 
 
 @beartype
@@ -136,7 +138,7 @@ def extract_sample(
     output_file: Optional[str] = None,
     *,
     sample_length: int = 30,
-):
+) -> str:
     """Extracts a sample from the middle of a video file.
 
     Args:
@@ -197,6 +199,7 @@ def extract_sample(
         raise RuntimeError("ffmpeg failed to extract the video sample.")
 
     print(f"Sample saved to: {output_file}")
+    return output_file
 
 
 @beartype
@@ -317,7 +320,7 @@ def transcode_for_streaming(
     output_file: Optional[str | Path] = None,
     *,
     crf: int = 23,
-) -> None:
+) -> Path:
     """
     Transcodes a video file using AV1 (libsvtav1) and Opus audio in WebM format, allowing it to be used for streaming over the web.
 
@@ -379,6 +382,8 @@ def transcode_for_streaming(
         print(f"Transcoding failed for {input_file}:\n{e.stderr}")
         Path(temp_file).unlink(missing_ok=True)
         raise RuntimeError(f"FFmpeg transcoding failed: {e.stderr}") from e
+
+    return output_file
 
 
 @beartype
