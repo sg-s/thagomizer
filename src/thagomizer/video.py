@@ -25,7 +25,8 @@ if not FFPROBE_LOC:
     raise FileNotFoundError("Cannot find the ffprobe binary.")
 
 
-def get_english_subtitle_stream(input_file: str):
+@beartype
+def get_english_subtitle_stream(input_file: str | Path) -> str | None:
     """Uses ffprobe to check if an English subtitle stream exists.
 
     Args:
@@ -37,6 +38,10 @@ def get_english_subtitle_stream(input_file: str):
     Raises:
         RuntimeError: If ffprobe fails.
     """
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
+
     cmd_ffprobe = [
         FFPROBE_LOC,
         "-v",
@@ -84,6 +89,9 @@ def extract_english_subtitles(
     Raises:
         RuntimeError: If ffmpeg fails to extract subtitles.
     """
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
 
     if isinstance(input_file, str):
         input_file = Path(input_file)
@@ -157,6 +165,9 @@ def extract_sample(
         RuntimeError: If ffmpeg fails to process the video.
     """
 
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
+
     if output_file is None:
         base, ext = os.path.splitext(input_file)
         output_file = f"{base}-sample{ext}"
@@ -210,13 +221,16 @@ def extract_sample(
 
 
 @beartype
-def hash_video_file(file_name: str) -> str:
+def hash_video_file(input_file: str) -> str:
     """fast hash of a video file using ffprobe"""
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
 
     command = [
         FFPROBE_LOC,
         "-i",
-        file_name,
+        input_file,
         "-show_entries",
         "format=duration",
         "-v",
@@ -241,7 +255,7 @@ def hash_video_file(file_name: str) -> str:
         "-ss",
         str(int(duration / 2)),
         "-i",
-        file_name,
+        input_file,
         "-frames:v",
         "1",  # Extract 1 frame
         "-q:v",
@@ -262,7 +276,7 @@ def hash_video_file(file_name: str) -> str:
     command = [
         FFPROBE_LOC,
         "-hide_banner",
-        file_name,
+        input_file,
     ]
 
     # Run the command
@@ -343,6 +357,10 @@ def transcode_for_streaming(
     Raises:
         RuntimeError: If transcoding fails.
     """
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
+
     input_path = Path(input_file)
     if output_file is None:
         output_file = input_path.with_suffix(".webm")
@@ -408,6 +426,12 @@ def transcode_for_streaming(
 def find_video_files(dir_name: str | Path) -> list:
     """find all video files in a given directory"""
 
+    if not os.path.exists(dir_name):
+        raise FileNotFoundError(f"Directory {dir_name} does not exist.")
+
+    if isinstance(dir_name, str):
+        dir_name = Path(dir_name)
+
     return [str(file) for ext in VIDEO_FORMATS for file in dir_name.glob(f"*.{ext}")]
 
 
@@ -417,6 +441,9 @@ def get_duration_seconds(input_file: str | Path) -> float:
 
     Args:
         input_file (str): Path to the input video file."""
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
 
     cmd = [
         FFPROBE_LOC,
@@ -429,13 +456,14 @@ def get_duration_seconds(input_file: str | Path) -> float:
         input_file,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
+    print(result.stdout)
     return float(result.stdout.strip())
 
 
 @beartype
 def parse_transcode_progress(
     progress_file: str | Path,
-    total_duration: float | int,
+    total_duration: Optional[float | int] = None,
 ):
     """
     parse the progress file to get the transcoding progress
@@ -444,6 +472,16 @@ def parse_transcode_progress(
         progress_file (str): Path to the progress file
         total_duration (float): Total duration of the video in seconds. This can be obtained via get_duration_seconds
     """
+
+    if not os.path.exists(progress_file):
+        raise FileNotFoundError(f"Progress file {progress_file} does not exist.")
+
+    if total_duration is None:
+        progress_file = Path(progress_file)  # Ensure it's a Path object
+
+        input_file = progress_file.with_suffix("").with_suffix("")
+        total_duration = get_duration_seconds(input_file)
+
     kv_pattern = re.compile(r"^(\w+)=([\S]+)$")
 
     speed = None

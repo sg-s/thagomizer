@@ -1,4 +1,5 @@
 import glob
+import inspect
 import os
 from pathlib import Path
 
@@ -14,6 +15,12 @@ VIDEO_FILES = [file for file in VIDEO_FILES if not file.endswith(".webm")]
 
 PROGRESS_FILES = glob.glob("tests/fixtures/*.log")
 DURATION = 500
+
+FUNCTIONS = [
+    func
+    for name, func in inspect.getmembers(video, inspect.isfunction)
+    if func.__module__ == video.__name__
+]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -84,3 +91,9 @@ def test_parse_transcode_progress(progress_file: str):
     actual_progress = float(os.path.basename(progress_file).split(".")[0])
 
     assert actual_progress == progress, f"Unexpected progress: {actual_progress}"
+
+
+@pytest.mark.parametrize("function", FUNCTIONS)
+def test_missing_file_error(function):
+    with pytest.raises(FileNotFoundError):
+        function("missing_file.webm")

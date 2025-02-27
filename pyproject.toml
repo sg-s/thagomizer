@@ -19,8 +19,8 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
-[build.hooks.vcs]
-version-file = "_version.py"
+[tool.hatch.build.hooks.vcs]
+version-file = "src/thagomizer/_version.py"
 
 [dependency-groups]
 dev = [
