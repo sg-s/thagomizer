@@ -13,10 +13,11 @@ dependencies = [
 ]
 
 [build-system]
-requires = [
-  "setuptools >= 40.9.0",
-]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
 
 [dependency-groups]
 dev = [
@@ -33,12 +34,7 @@ docs = [
     "mkdocstrings-python>=1.14.4",
 ]
 
-[tool.setuptools]
-package-dir = {"deeporigin" = "src"}
-include-package-data = true
 
-[tool.setuptools.dynamic]
-version = {file = ["src/VERSION"]}
 
 
 [tool.coverage.run]

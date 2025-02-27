@@ -15,3 +15,5 @@
 *.mkv
 *.webm
 *.webvtt
+
+*egg-info*
