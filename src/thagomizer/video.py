@@ -3,8 +3,10 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -70,9 +72,9 @@ def get_english_subtitle_stream(input_file: str):
 
 @beartype
 def extract_english_subtitles(
-    input_file: str,
+    input_file: str | Path,
     output_file: Optional[str] = None,
-) -> str | None:
+) -> None | Path:
     """Extracts English subtitles from a video and saves them in WebVTT format.
 
     Args:
@@ -84,16 +86,21 @@ def extract_english_subtitles(
         RuntimeError: If ffmpeg fails to extract subtitles.
     """
 
+    if isinstance(input_file, str):
+        input_file = Path(input_file)
+
     # Check for English subtitles using ffprobe
     subtitle_stream = get_english_subtitle_stream(input_file)
     if subtitle_stream is None:
         print("No English subtitles found in the input file.")
-        return
+        return None
 
     # Default to .vtt output file if not provided
     if output_file is None:
-        base, _ = os.path.splitext(input_file)
-        output_file = f"{base}.vtt"
+        output_file = input_file.with_suffix(".vtt")
+
+    if output_file.exists():
+        return output_file
 
     # Extract subtitles using ffmpeg in WebVTT format
     cmd_ffmpeg = [
@@ -104,7 +111,7 @@ def extract_english_subtitles(
         f"0:{subtitle_stream}",
         "-c:s",
         "webvtt",
-        output_file,  #
+        str(output_file),
     ]
 
     try:
@@ -277,7 +284,7 @@ def hash_video_file(file_name: str) -> str:
 
 
 @beartype
-def get_audio_channels(input_file: str) -> int:
+def get_audio_channels(input_file: str | Path) -> int:
     """
     Uses ffprobe to determine the number of audio channels in a video file.
 
@@ -287,6 +294,10 @@ def get_audio_channels(input_file: str) -> int:
     Returns:
         int: Number of audio channels.
     """
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file {input_file} does not exist.")
+
     command = [
         FFPROBE_LOC,
         "-v",
@@ -342,6 +353,8 @@ def transcode_for_streaming(
 
     temp_file = input_path.with_suffix(".tmp.webm")
 
+    progress_log = input_path.with_suffix(".webm.progress.log")
+
     audio_channels = get_audio_channels(input_file)
     audio_filter = "channelmap=channel_layout=5.1" if audio_channels >= 6 else "anull"
 
@@ -351,6 +364,8 @@ def transcode_for_streaming(
 
     command = [
         FFMPEG_LOC,
+        "-progress",
+        progress_log,
         "-i",
         input_file,
         "-map",
@@ -395,3 +410,77 @@ def find_video_files(dir_name: str | Path) -> list:
     """find all video files in a given directory"""
 
     return [str(file) for ext in VIDEO_FORMATS for file in dir_name.glob(f"*.{ext}")]
+
+
+@beartype
+def get_duration_seconds(input_file: str | Path) -> float:
+    """get the duration of a video file in seconds
+
+    Args:
+        input_file (str): Path to the input video file."""
+
+    cmd = [
+        FFPROBE_LOC,
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        input_file,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return float(result.stdout.strip())
+
+
+@beartype
+def parse_transcode_progress(
+    progress_file: str | Path,
+    total_duration: float | int,
+):
+    """
+    parse the progress file to get the transcoding progress
+
+    Args:
+        progress_file (str): Path to the progress file
+        total_duration (float): Total duration of the video in seconds. This can be obtained via get_duration_seconds
+    """
+    kv_pattern = re.compile(r"^(\w+)=([\S]+)$")
+
+    speed = None
+    progress = None
+    complete = False
+
+    # Read lines once
+    with open(progress_file, "r") as f:
+        lines = f.readlines()
+
+    # Reverse the lines so we see the bottom of the file first
+    for line in reversed(lines):
+        line = line.strip()
+        match = kv_pattern.match(line)
+        if not match:
+            continue
+
+        key, value = match.groups()
+
+        if key == "progress":
+            if value == "end":
+                complete = True
+                progress = 100
+
+        elif key == "out_time_ms":
+            progress = float(value) / 1000.0 / total_duration
+        elif key == "speed":
+            speed = value
+        else:
+            continue
+
+        if speed is not None and progress is not None:
+            if complete:
+                return 100, speed
+            else:
+                return progress, speed
+
+    # fallback
+    return 0.0, None
