@@ -13,11 +13,14 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
-source = "uv-dynamic-versioning"
+source = "vcs"
+
+[build.hooks.vcs]
+version-file = "_version.py"
 
 [dependency-groups]
 dev = [
