@@ -6,6 +6,9 @@ on:
   pull_request:
     paths:
       - '**/*.py'
+  push:
+    branches:
+      - main
 
 
 jobs:
@@ -46,7 +49,7 @@ jobs:
   test:
     name: Test using python/uv
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         python-version:
