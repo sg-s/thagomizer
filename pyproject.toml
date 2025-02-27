@@ -1,7 +1,6 @@
 [project]
 name = "thagomizer"
-version = "0.4.0"
-description = "Add your description here"
+description = "A collection of useful tools in python."
 readme = "README.md"
 authors = [
     { name = "Srinivas Gorur-Shandilya", email = "code@srinivas.gs" }
