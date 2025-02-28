@@ -14,7 +14,7 @@ VIDEO_FILES = [file for file in VIDEO_FILES if not file.endswith(".webm")]
 
 
 PROGRESS_FILES = glob.glob("tests/fixtures/*.log")
-DURATION = 500
+DURATION = 100
 
 FUNCTIONS = [
     func

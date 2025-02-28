@@ -443,7 +443,7 @@ def get_duration_seconds(input_file: str | Path) -> float:
         input_file (str): Path to the input video file."""
 
     if not os.path.exists(input_file):
-        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
+        raise FileNotFoundError(f"Input file {input_file} does not exist.")
 
     cmd = [
         FFPROBE_LOC,
@@ -463,7 +463,7 @@ def get_duration_seconds(input_file: str | Path) -> float:
 @beartype
 def parse_transcode_progress(
     progress_file: str | Path,
-    total_duration: Optional[float | int] = None,
+    total_num_frames: Optional[int] = None,
 ):
     """
     parse the progress file to get the transcoding progress
@@ -476,11 +476,11 @@ def parse_transcode_progress(
     if not os.path.exists(progress_file):
         raise FileNotFoundError(f"Progress file {progress_file} does not exist.")
 
-    if total_duration is None:
+    if total_num_frames is None:
         progress_file = Path(progress_file)  # Ensure it's a Path object
 
         input_file = progress_file.with_suffix("").with_suffix("")
-        total_duration = get_duration_seconds(input_file)
+        total_num_frames = get_frame_count(input_file)
 
     kv_pattern = re.compile(r"^(\w+)=([\S]+)$")
 
@@ -506,8 +506,8 @@ def parse_transcode_progress(
                 complete = True
                 progress = 100
 
-        elif key == "out_time_ms":
-            progress = float(value) / 1000.0 / total_duration
+        elif key == "frame":
+            progress = int(100 * int(value) / total_num_frames)
         elif key == "speed":
             speed = value
         else:
@@ -520,4 +520,51 @@ def parse_transcode_progress(
                 return progress, speed
 
     # fallback
-    return 0.0, None
+    return 0, None
+
+
+@beartype
+def get_frame_count(input_file: str | Path) -> int:
+    """
+    Get the total number of frames in a video file using ffprobe.
+
+    :param video_path: Path to the video file.
+    :return: Total number of frames in the video.
+    """
+
+    input_file = Path(input_file)
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file {input_file} does not exist.")
+
+    try:
+        result = subprocess.run(
+            [
+                FFPROBE_LOC,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-count_frames",
+                "-show_entries",
+                "stream=nb_read_frames",
+                "-of",
+                "json",
+                input_file,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        data = json.loads(result.stdout)
+
+        streams = data.get("streams", [{}])
+        frame_count = streams[0].get("nb_read_frames") or streams[0].get("nb_frames")
+
+        if frame_count is None:
+            raise ValueError("Could not retrieve frame count from ffprobe output.")
+
+        return int(frame_count)
+
+    except (KeyError, IndexError, json.JSONDecodeError):
+        raise RuntimeError("Could not determine frame count.")
