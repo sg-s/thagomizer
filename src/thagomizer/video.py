@@ -456,7 +456,6 @@ def get_duration_seconds(input_file: str | Path) -> float:
         input_file,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    print(result.stdout)
     return float(result.stdout.strip())
 
 
@@ -568,3 +567,56 @@ def get_frame_count(input_file: str | Path) -> int:
 
     except (KeyError, IndexError, json.JSONDecodeError):
         raise RuntimeError("Could not determine frame count.")
+
+
+@beartype
+def extract_keyframe(input_file: str | Path) -> str:
+    """
+    Extracts a keyframe from approximately the middle third of the video and saves it as an image.
+
+    The output image is saved in the same directory as the input video and is named
+    <original_video_basename>.keyframe.jpg.
+
+    :param input_file: Path to the input video file.
+    """
+
+    input_file = Path(input_file)
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file {input_file} does not exist.")
+
+    duration = get_duration_seconds(input_file)
+    seek_time = duration / 2.0
+
+    # Build the output image path.
+    output_image_path = input_file.parent / f"{input_file.stem}.keyframe.jpg"
+
+    # Construct the FFmpeg command.
+    # -ss before the input does a fast seek.
+    # -skip_frame nokey makes FFmpeg only decode keyframes.
+    # -vsync 0 avoids frame duplication.
+    # -frames:v 1 ensures only one frame is output.
+    command = [
+        "ffmpeg",
+        "-ss",
+        str(seek_time),
+        "-skip_frame",
+        "nokey",
+        "-i",
+        str(input_file),
+        "-vsync",
+        "0",
+        "-frames:v",
+        "1",
+        str(output_image_path),
+    ]
+
+    subprocess.run(
+        command,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    print(f"Thumbnail saved at {output_image_path}")
+
+    return str(output_image_path)
