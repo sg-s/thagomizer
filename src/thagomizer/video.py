@@ -462,6 +462,7 @@ def get_duration_seconds(input_file: str | Path) -> float:
 @beartype
 def parse_transcode_progress(
     progress_file: str | Path,
+    *,
     total_num_frames: Optional[int] = None,
 ):
     """
@@ -523,50 +524,29 @@ def parse_transcode_progress(
 
 
 @beartype
-def get_frame_count(input_file: str | Path) -> int:
-    """
-    Get the total number of frames in a video file using ffprobe.
+def get_frame_count(video_file: str | Path) -> int | None:
+    """count the number of frames in a video file"""
 
-    :param video_path: Path to the video file.
-    :return: Total number of frames in the video.
-    """
+    # Run ffprobe and capture its stdout/stderr
+    result = subprocess.run(
+        [
+            FFPROBE_LOC,
+            video_file,
+        ],
+        capture_output=True,
+        text=True,
+    )
 
-    input_file = Path(input_file)
+    # Search stdout for lines containing "NUMBER_OF_FRAMES"
+    found_lines = [
+        line for line in result.stderr.splitlines() if "NUMBER_OF_FRAMES" in line
+    ]
 
-    if not os.path.exists(input_file):
-        raise FileNotFoundError(f"Input file {input_file} does not exist.")
-
-    try:
-        result = subprocess.run(
-            [
-                FFPROBE_LOC,
-                "-v",
-                "error",
-                "-select_streams",
-                "v:0",
-                "-count_frames",
-                "-show_entries",
-                "stream=nb_read_frames",
-                "-of",
-                "json",
-                input_file,
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        data = json.loads(result.stdout)
-
-        streams = data.get("streams", [{}])
-        frame_count = streams[0].get("nb_read_frames") or streams[0].get("nb_frames")
-
-        if frame_count is None:
-            raise ValueError("Could not retrieve frame count from ffprobe output.")
-
-        return int(frame_count)
-
-    except (KeyError, IndexError, json.JSONDecodeError):
-        raise RuntimeError("Could not determine frame count.")
+    if found_lines:
+        for line in found_lines:
+            line = line.replace("NUMBER_OF_FRAMES:", "")
+            line = line.strip()
+            return int(line)
 
 
 @beartype
