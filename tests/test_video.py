@@ -14,7 +14,10 @@ VIDEO_FILES = [file for file in VIDEO_FILES if not file.endswith(".webm")]
 
 
 PROGRESS_FILES = glob.glob("tests/fixtures/*.log")
-DURATION = 100
+
+# Total number of frames for the test video
+TOTAL_FRAMES = 100  # This matches the 100% progress file
+
 
 FUNCTIONS = [
     func
@@ -85,7 +88,9 @@ def test_transcode_for_streaming(video_file: str):
 
 @pytest.mark.parametrize("progress_file", PROGRESS_FILES)
 def test_parse_transcode_progress(progress_file: str):
-    progress, speed = video.parse_transcode_progress(progress_file, DURATION)
+    progress, speed = video.parse_transcode_progress(
+        progress_file, total_num_frames=TOTAL_FRAMES
+    )
 
     assert speed == "16x", "Unexpected speed"
     actual_progress = float(os.path.basename(progress_file).split(".")[0])

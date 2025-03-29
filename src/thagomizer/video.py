@@ -524,14 +524,17 @@ def parse_transcode_progress(
 
 
 @beartype
-def get_frame_count(video_file: str | Path) -> int | None:
+def get_frame_count(input_file: str | Path) -> int | None:
     """count the number of frames in a video file"""
+
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Video file {input_file} does not exist.")
 
     # Run ffprobe and capture its stdout/stderr
     result = subprocess.run(
         [
             FFPROBE_LOC,
-            video_file,
+            input_file,
         ],
         capture_output=True,
         text=True,
