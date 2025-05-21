@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Srinivas Gorur-Shandilya", email = "code@srinivas.gs" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "beartype>=0.19.0",
     "xxhash>=3.5.0",
