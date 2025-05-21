@@ -74,13 +74,15 @@ jobs:
 
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - name: Install the project
         run: uv sync --all-extras --dev
 
       - name: Run tests
-        run: uv run pytest 
+        run: uv run --frozen pytest 
 
 
   
