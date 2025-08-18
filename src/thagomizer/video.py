@@ -479,7 +479,13 @@ def parse_transcode_progress(
     if total_num_frames is None:
         progress_file = Path(progress_file)  # Ensure it's a Path object
 
-        input_file = progress_file.with_suffix("").with_suffix("")
+        # Remove the last three extensions (.webm.progress.log) and append .tmp.webm
+        # progress_file has format: filename.webm.progress.log
+        # We want: filename.tmp.webm
+        base_name = progress_file.stem  # removes .log
+        base_name = Path(base_name).stem  # removes .progress
+        base_name = Path(base_name).stem  # removes .webm
+        input_file = progress_file.parent / f"{base_name}.tmp.webm"
         total_num_frames = get_frame_count(input_file)
 
     kv_pattern = re.compile(r"^(\w+)=([\S]+)$")
