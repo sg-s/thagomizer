@@ -488,6 +488,9 @@ def parse_transcode_progress(
         input_file = progress_file.parent / f"{base_name}.tmp.webm"
         total_num_frames = get_frame_count(input_file)
 
+    if total_num_frames is None:
+        return 0, None
+
     kv_pattern = re.compile(r"^(\w+)=([\S]+)$")
 
     speed = None
