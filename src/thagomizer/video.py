@@ -64,12 +64,28 @@ def get_english_subtitle_stream(input_file: str | Path) -> str | None:
         )
         streams = json.loads(result.stdout).get("streams", [])
 
+        # Choose the English subtitle stream with the maximum NUMBER_OF_FRAMES.
+        # Some files contain multiple English subtitle tracks (e.g., forced and full).
+        # We prefer the one with the most frames as it generally contains the most content.
+        best_stream_index: Optional[int] = None
+        best_num_frames: int = -1
+
         for stream in streams:
-            if "tags" in stream and stream["tags"].get("language") == "eng":
-                return str(stream["index"])  # Return stream index
+            tags = stream.get("tags", {})
+            if tags.get("language") != "eng":
+                continue
+
+            num_frames = int(tags.get("NUMBER_OF_FRAMES", -1))
+
+            if num_frames > best_num_frames:
+                best_num_frames = num_frames
+                best_stream_index = int(stream.get("index"))
+
+        if best_stream_index is not None:
+            return str(best_stream_index)
 
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"ffprobe failed: {e.stderr.strip()}")
+        raise RuntimeError(f"ffprobe failed: {e.stderr.strip()}") from None
 
     return None  # No English subtitles found
 
@@ -134,7 +150,7 @@ def extract_english_subtitles(
         print("FFmpeg error:", e.stderr.strip())
         raise RuntimeError(
             f"ffmpeg failed to extract English subtitles: {e.stderr.strip()}"
-        )
+        ) from None
 
     # Verify the output file exists and is not empty
     if not os.path.exists(output_file):
@@ -187,7 +203,7 @@ def extract_sample(
     try:
         duration = float(subprocess.check_output(cmd_probe, text=True).strip())
     except subprocess.CalledProcessError:
-        raise RuntimeError("Failed to retrieve video duration using ffprobe.")
+        raise RuntimeError("Failed to retrieve video duration using ffprobe.") from None
 
     # Calculate the midpoint start time
     start_time = max(
@@ -214,7 +230,7 @@ def extract_sample(
             cmd_ffmpeg, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError:
-        raise RuntimeError("ffmpeg failed to extract the video sample.")
+        raise RuntimeError("ffmpeg failed to extract the video sample.") from None
 
     print(f"Sample saved to: {output_file}")
     return output_file
