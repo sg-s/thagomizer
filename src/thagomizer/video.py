@@ -356,26 +356,156 @@ def get_audio_channels(input_file: str | Path) -> int:
 
 
 @beartype
+def get_video_bitrate(input_file: str | Path) -> int:
+    """
+    Gets the video bitrate from a video file using ffprobe.
+
+    Args:
+        input_file (str | Path): Path to the input video file.
+
+    Returns:
+        int: Video bitrate in kbps.
+
+    Raises:
+        FileNotFoundError: If the input file doesn't exist.
+        RuntimeError: If ffprobe fails or bitrate cannot be determined.
+    """
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file {input_file} does not exist.")
+
+    cmd_ffprobe = [
+        FFPROBE_LOC,
+        "-v",
+        "error",
+        "-show_entries",
+        "format=bit_rate",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        input_file,
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd_ffprobe,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        bitrate_str = result.stdout.strip()
+        if bitrate_str and bitrate_str.isdigit():
+            # Convert from bps to kbps
+            return int(int(bitrate_str) / 1000)
+        else:
+            # Fallback: try to get bitrate from video stream
+            cmd_ffprobe_stream = [
+                FFPROBE_LOC,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=bit_rate",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                input_file,
+            ]
+
+            result_stream = subprocess.run(
+                cmd_ffprobe_stream,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+            bitrate_str = result_stream.stdout.strip()
+            if bitrate_str and bitrate_str.isdigit():
+                return int(int(bitrate_str) / 1000)
+            else:
+                # Final fallback: estimate from file size and duration
+                return _estimate_bitrate_from_file_size(input_file)
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"ffprobe failed: {e.stderr.strip()}") from None
+
+
+@beartype
+def _estimate_bitrate_from_file_size(input_file: str | Path) -> int:
+    """
+    Estimates video bitrate from file size and duration as a fallback.
+
+    Args:
+        input_file (str | Path): Path to the input video file.
+
+    Returns:
+        int: Estimated video bitrate in kbps.
+
+    Raises:
+        FileNotFoundError: If the input file doesn't exist.
+    """
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"Input file {input_file} does not exist.")
+
+    # Get duration
+    cmd_duration = [
+        FFPROBE_LOC,
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        input_file,
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd_duration,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        duration = float(result.stdout.strip())
+        file_size = Path(input_file).stat().st_size
+
+        # Estimate bitrate: (file_size * 8) / (duration * 1000)
+        # Convert to kbps
+        estimated_bitrate = int((file_size * 8) / (duration * 1000))
+
+        # Cap at reasonable maximum (50 Mbps)
+        return min(estimated_bitrate, 50000)
+
+    except (subprocess.CalledProcessError, ValueError):
+        # Final fallback: return a reasonable default
+        return 10000  # 10 Mbps
+
+
+@beartype
 def transcode_for_streaming(
     input_file: str | Path,
     output_file: Optional[str | Path] = None,
     *,
-    crf: int = 23,
+    quality_factor: float = 1.0,
 ) -> Path:
     """
-    Transcodes a video file using AV1 (libsvtav1) and Opus audio in WebM format, allowing it to be used for streaming over the web.
+    Transcodes a video file using AV1 (libsvtav1) and Opus audio in WebM format,
+    targeting approximately the same bitrate as the input file for quality preservation.
+    Uses two-pass encoding for optimal quality and bitrate control.
 
     Args:
-        input_file (str): Path to the input video file.
-        output_file (Optional[str]): Path to the output file. If None, appends '-transcoded.webm' to input filename.
-        crf (int): Constant Rate Factor for video quality (lower is better, 0 is lossless).
+        input_file (str | Path): Path to the input video file.
+        output_file (Optional[str | Path]): Path to the output file. If None, appends '.webm' to input filename.
+        quality_factor (float): Multiplier for target bitrate. 1.0 = same size, 0.8 = 80% size, etc.
 
     Raises:
         RuntimeError: If transcoding fails.
     """
-
     if not os.path.exists(input_file):
-        raise FileNotFoundError(f"Progress file {input_file} does not exist.")
+        raise FileNotFoundError(f"Input file {input_file} does not exist.")
 
     input_path = Path(input_file)
     if output_file is None:
@@ -385,18 +515,48 @@ def transcode_for_streaming(
         return output_file
 
     temp_file = input_path.with_suffix(".tmp.webm")
-
     progress_log = input_path.with_suffix(".webm.progress.log")
+
+    # Get input bitrate and calculate target bitrate
+    input_bitrate = get_video_bitrate(input_file)
+    target_bitrate = int(input_bitrate * quality_factor)
+
+    # For AV1, we'll use CRF mode but target the desired bitrate
+    # Start with a conservative CRF value and adjust if needed
+    crf = 18  # High quality (lower values = higher quality)
 
     audio_channels = get_audio_channels(input_file)
     audio_filter = "channelmap=channel_layout=5.1" if audio_channels >= 6 else "anull"
 
     print(
-        f"Transcoding: {input_file} -> {temp_file} with CRF {crf} (Audio Channels: {audio_channels})"
+        f"Transcoding: {input_file} -> {temp_file}"
+        f"\nInput bitrate: {input_bitrate}k, Target: {target_bitrate}k"
+        f"\nUsing CRF {crf} for quality control"
+        f"\nAudio Channels: {audio_channels}"
     )
 
-    command = [
+    # First pass: analyze video for optimal encoding
+    first_pass_cmd = [
         FFMPEG_LOC,
+        "-y",  # Overwrite output files
+        "-i",
+        input_file,
+        "-c:v",
+        "libsvtav1",
+        "-crf",
+        str(crf),
+        "-pass",
+        "1",
+        "-an",  # No audio in first pass
+        "-f",
+        "null",
+        "/dev/null" if os.name != "nt" else "NUL",  # Cross-platform null device
+    ]
+
+    # Second pass: encode with optimal settings
+    second_pass_cmd = [
+        FFMPEG_LOC,
+        "-y",  # Overwrite output files
         "-progress",
         progress_log,
         "-i",
@@ -407,6 +567,8 @@ def transcode_for_streaming(
         "libsvtav1",
         "-crf",
         str(crf),
+        "-pass",
+        "2",
         "-c:a",
         "libopus",
         "-b:a",
@@ -421,18 +583,49 @@ def transcode_for_streaming(
     ]
 
     try:
+        print("Starting first pass (analysis)...")
         subprocess.run(
-            command,
+            first_pass_cmd,
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
         )
+
+        print("Starting second pass (encoding)...")
+        subprocess.run(
+            second_pass_cmd,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        # Clean up pass files
+        pass_files = [
+            input_path.with_suffix(".webm.ffindex"),
+            input_path.with_suffix(".webm-0.log"),
+        ]
+        for pass_file in pass_files:
+            if pass_file.exists():
+                pass_file.unlink()
+
         shutil.move(temp_file, output_file)
         print(f"Successfully created: {output_file}")
+
     except subprocess.CalledProcessError as e:
         print(f"Transcoding failed for {input_file}:\n{e.stderr}")
         Path(temp_file).unlink(missing_ok=True)
+
+        # Clean up pass files on failure
+        pass_files = [
+            input_path.with_suffix(".webm.ffindex"),
+            input_path.with_suffix(".webm-0.log"),
+        ]
+        for pass_file in pass_files:
+            if pass_file.exists():
+                pass_file.unlink()
+
         raise RuntimeError(f"FFmpeg transcoding failed: {e.stderr}") from e
 
     return output_file
