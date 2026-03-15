@@ -496,6 +496,10 @@ def transcode_for_streaming(
     targeting approximately the same bitrate as the input file for quality preservation.
     Uses two-pass encoding for optimal quality and bitrate control.
 
+    Only video and audio streams are mapped to the output. Data or text streams
+    (e.g. embedded metadata or unsupported subtitle types) are omitted, since
+    WebM supports only VP8/VP9/AV1 video, Vorbis/Opus audio, and WebVTT subtitles.
+
     Args:
         input_file (str | Path): Path to the input video file.
         output_file (Optional[str | Path]): Path to the output file. If None, appends '.webm' to input filename.
@@ -554,6 +558,8 @@ def transcode_for_streaming(
     ]
 
     # Second pass: encode with optimal settings
+    # Map only video and audio: WebM supports VP8/VP9/AV1, Vorbis/Opus, and WebVTT.
+    # Inputs may have data/text streams (e.g. bin_data) that cannot be muxed into WebM.
     second_pass_cmd = [
         FFMPEG_LOC,
         "-y",  # Overwrite output files
@@ -562,7 +568,9 @@ def transcode_for_streaming(
         "-i",
         input_file,
         "-map",
-        "0",
+        "0:v",
+        "-map",
+        "0:a",
         "-c:v",
         "libsvtav1",
         "-crf",
@@ -575,8 +583,6 @@ def transcode_for_streaming(
         "192k",
         "-af",
         audio_filter,
-        "-c:s",
-        "webvtt",
         "-f",
         "webm",
         temp_file,

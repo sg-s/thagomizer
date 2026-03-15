@@ -27,6 +27,7 @@ The `transcode_for_streaming` function now uses a two-pass encoding approach tha
 - **Second pass**: Encodes with precise bitrate control and quality constraints
 - **Quality factor**: Adjustable multiplier (default 1.0 = same size, 0.8 = 80% size, etc.)
 - **Rate control**: Uses `maxrate` and `bufsize` parameters for consistent bitrate
+- **Stream mapping**: Only video and audio streams are included in the WebM output. Data or text streams (e.g. embedded metadata or non-WebVTT subtitles) are omitted, since WebM supports only VP8/VP9/AV1 video, Vorbis/Opus audio, and WebVTT subtitles.
 
 This approach preserves visual quality while leveraging AV1's superior compression efficiency.
 
